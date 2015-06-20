@@ -267,7 +267,7 @@ function makegraph(sources) {
     var ts = year + "-" + zeropad(month, 2) + "-" + zeropad(day, 2);  //today
 
     for (var idx = 0; idx < sources.length; idx ++) {
-	getcsv(sources[idx], "sensors/" + ts + ":" + sources[idx]);
+	getcsv(sources[idx], "data/" + ts + ":" + sources[idx]);
     }
 
     now.setDate(now.getDate() - 1);
@@ -277,7 +277,7 @@ function makegraph(sources) {
     ts = year + "-" + zeropad(month, 2) + "-" + zeropad(day, 2); // yesterday
 
     for (var idx = 0; idx < sources.length; idx ++) {
-	getcsv(sources[idx], "sensors/" + ts + ":" + sources[idx]);
+	getcsv(sources[idx], "data/" + ts + ":" + sources[idx]);
     }
 
     needed--;
