@@ -233,6 +233,15 @@ class EmonHubInterfacer(object):
                 bytepos += size
                 decoded.append(value)
 
+        # apply scale
+        if node in ehc.nodelist:
+            if 'scale' in ehc.nodelist[node]:
+                scale = ehc.nodelist[node]['scale']
+                s = len(scale)
+                for i in range(len(decoded)):
+                    if i < s and not float(scale[i]) == 1.0:
+                        decoded[i] = decoded[i] * float(scale[i])
+
         # Insert node ID before data
         decoded.insert(0, int(node))
         return decoded

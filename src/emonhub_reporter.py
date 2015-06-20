@@ -14,9 +14,14 @@ import logging
 import json
 import threading
 import Queue
+import os
+import errno
 
 import emonhub_buffer as ehb
+import emonhub_coder as ehc
   
+from collections import defaultdict
+
 """class EmonHubReporter
 
 Stores server parameters and buffers the data between two HTTP requests
@@ -361,3 +366,106 @@ Raise this when init fails.
 
 class EmonHubReporterInitError(Exception):
     pass
+
+class EmonHubSimpleReporter(EmonHubReporter):
+
+    def __init__(self, reporterName, queue, **kwargs):
+        """Initialize reporter
+
+        """
+
+        # Initialization
+        super(EmonHubSimpleReporter, self).__init__(reporterName, queue, **kwargs)
+
+        # add or alter any default settings for this reporter
+        self._defaults.update({'batchsize': 1000})
+
+        self._simple_settings = {'datadir': "/tmp/stats"}
+
+        # This line will stop the default values printing to logfile at start-up
+        self._settings.update(self._defaults)
+
+        # set an absolute upper limit for number of items to process per post
+        self._item_limit = 1000
+
+    def set(self, **kwargs):
+        """
+
+        :param kwargs:
+        :return:
+        """
+
+        super (EmonHubSimpleReporter, self).set(**kwargs)
+
+        for key, setting in self._simple_settings.iteritems():
+            #valid = False
+            if not key in kwargs.keys():
+                setting = self._simple_settings[key]
+            else:
+                setting = kwargs[key]
+            if key in self._settings and self._settings[key] == setting:
+                continue
+            elif key == 'datadir':
+                self._settings[key] = setting
+                continue
+            else:
+                self._log.warning("'%s' is not valid for %s: %s" % (setting, self.name, key))
+
+    def _mkdir(self, path):
+	try:
+	    os.makedirs(path)
+	except OSError as exc:
+	    if exc.errno == errno.EEXIST and os.path.isdir(path):
+		pass
+	    else: raise
+
+    def _process_post(self, databuffer):
+        """Send data to server."""
+        
+        # databuffer is of format:
+        # [[timestamp, nodeid, datavalues][timestamp, nodeid, datavalues]]
+        # [[1399980731, 10, 150, 250 ...]]
+
+        if not 'datadir' in self._settings.keys() or self._settings['datadir'] == "":
+            return
+
+	datadir = self._settings['datadir']
+	self._mkdir(datadir)
+
+	towrite = defaultdict(list)
+	nodemap = {}
+
+	for data in databuffer:
+	    ts = data[0]
+	    node = data.pop(1)
+
+	    nodename = str(node)
+	    if nodename in ehc.nodelist and 'nodename' in ehc.nodelist[nodename]:
+		nodename = ehc.nodelist[nodename]['nodename']
+
+	    date = time.strftime("%F", time.localtime(ts))
+	    towrite[date+":"+nodename].append(','.join(map(str, data)))
+
+	    nodemap[date+":"+nodename] = str(node)
+
+	    self._log.debug(self.name + " [" + nodename + "] " + str(data))
+
+	for filename in towrite:
+	    fullpath = datadir + "/" + filename
+	    printnames = False
+	    if not os.path.isfile(fullpath):
+		printnames = True
+
+	    self._log.debug(self.name + " [" + filename + "] ")
+	    with open(fullpath, "a") as f:
+		if printnames:
+		    if 'names' in ehc.nodelist[nodemap[filename]]:
+			f.write('Date,' + ','.join(ehc.nodelist[nodemap[filename]]['names']) + "\n")
+		    else:
+			f.write("unknown" + "\n")
+	
+		for values in towrite[filename]:
+		    f.write(values + "\n")
+		    self._log.debug(self.name + " -- " + filename + " - " + values)
+
+	return True
