@@ -72,6 +72,23 @@ var needed = 0;
 var dataset = {};
 var datatypes = {};
 var graphtype = "";
+var defaulttype = "";
+
+//
+// get any query parameters and return an array of matches
+//
+function getQueryStringValue(key) {
+    var regex = new RegExp("[?&]" + key + "=([^&]*)", 'g');
+    var res = [];
+    while (qs = regex.exec(window.location.search)) {
+	if (qs == null) {
+	    return "";
+	} else {
+	    res.push(qs[1]);
+	}
+    }
+    return res;
+}
 
 function ismobile() {
     var mobile = false;
@@ -213,7 +230,7 @@ function gotdata(name, data) {
 	    var opt = document.createElement('option');
 	    opt.value = options[o];
 	    opt.innerHTML = options[o];
-	    if (options[o] == "Temperature") {
+	    if (options[o] == defaulttype) {
 		opt.selected = true;
 	    }
 	    select.appendChild(opt);
@@ -247,6 +264,9 @@ function zeropad(num, places) {
 }
 
 function makegraph(sources) {
+    defaulttype = getQueryStringValue("type");
+    defaulttype = defaulttype.length > 0 ? defaulttype = defaulttype[0] : "Temperature";
+
     if (ismobile()) {
 	var l = document.getElementById("legend");
 	l.className = "mlegend";
@@ -270,14 +290,19 @@ function makegraph(sources) {
 	getcsv(sources[idx], "data/" + ts + ":" + sources[idx]);
     }
 
-    now.setDate(now.getDate() - 1);
-    year = now.getFullYear();
-    month = now.getMonth() + 1;
-    day = now.getDate();
-    ts = year + "-" + zeropad(month, 2) + "-" + zeropad(day, 2); // yesterday
+    var days = getQueryStringValue("days");
+    var days = parseInt(days[0]);
+    days = isNaN(days) ? 2 : days > 9 ? 9 : days < 1 ? 1 : days;
+    for (var d = 2; d <= days; d++) {
+	now.setDate(now.getDate() - 1);
+	year = now.getFullYear();
+	month = now.getMonth() + 1;
+	day = now.getDate();
+	ts = year + "-" + zeropad(month, 2) + "-" + zeropad(day, 2); // yesterday
 
-    for (var idx = 0; idx < sources.length; idx ++) {
-	getcsv(sources[idx], "data/" + ts + ":" + sources[idx]);
+	for (var idx = 0; idx < sources.length; idx ++) {
+	    getcsv(sources[idx], "data/" + ts + ":" + sources[idx]);
+	}
     }
 
     needed--;
@@ -287,8 +312,27 @@ function makegraph(sources) {
     //console.log("done queing " + needed);
 }
 
-makegraph( ["Office", "Outside", "Kitchen", "Bathroom"] );
-//makegraph( "Humidity", ["Office", "Outside", "Kitchen", "Bathroom"] );
+function getsensors(path) {
+    var req = new XMLHttpRequest();
+    req.onreadystatechange = function () {
+	if (req.readyState == 4) {
+	    needed--;
+	    //console.log( "needed is " + needed );
+	    if (req.status === 200 || // Normal http
+		    req.status === 0) { // Chrome w/ --allow-file-access-from-files
+		var sensors = JSON.parse(req.responseText);
+		makegraph( sensors );
+	    }
+	}
+    };
+    req.open('GET', path, true);
+    req.send(null);
+}
+
+var pathArray = window.location.pathname.split( '/' );
+pathArray[pathArray.length - 1] = "sensors";
+getsensors(pathArray.join("/"));
+
 </script>
 </body>
 </html>
