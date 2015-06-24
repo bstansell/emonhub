@@ -65,7 +65,7 @@
 <div id="legend-container">
 <select id="graphtypes" onchange="updateit()">
 </select>
-<div id="legend" class="legend"></div></div>
+<div id="legend" class="legend"></div><div id="altlegend" class="mlegend" style="display: none"></div></div>
 <script type="text/javascript">
 var dgraph = null;
 var needed = 0;
@@ -130,6 +130,15 @@ function createit(data) {
 	if (ismobile()) {
 	    options["legend"] = "always";
 	    options["labelsSeparateLines"] = false;
+	} else {
+	    var l = document.getElementById("altlegend");
+	    l.style.display = null;
+	    var spans = [];
+	    var maxc = options["colors"].length;
+	    for (var s = 1; s < options["labels"].length; s++) {
+		spans.push('<span style="font-weight: bold; color: ' + options["colors"][(s-1) % maxc] + ';"><div style="display: inline-block; position: relative; bottom: .5ex; padding-left: 1em; height: 1px; border-bottom: 2px solid ' + options["colors"][(s-1) % maxc] + ';"></div> ' + options["labels"][s] + ' </span>');
+	    }
+	    l.innerHTML = spans.join("");
 	}
 	dgraph = new Dygraph(
 		document.getElementById("graphdiv"),
@@ -270,9 +279,9 @@ function makegraph(sources) {
     if (ismobile()) {
 	var l = document.getElementById("legend");
 	l.className = "mlegend";
-	l = document.getElementById("legend-container");
-	l.style["text-align"] = "center";
     }
+    var l = document.getElementById("legend-container");
+    l.style["text-align"] = "center";
 
     dgraph = null;
     dataset = {};
