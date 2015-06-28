@@ -459,7 +459,7 @@ class EmonHubSimpleReporter(EmonHubReporter):
 	    self._log.debug(self.name + " [" + filename + "] ")
 	    with open(fullpath, "a") as f:
 		if printnames:
-		    if 'names' in ehc.nodelist[nodemap[filename]]:
+		    if nodemap[filename] in ehc.nodelist and 'names' in ehc.nodelist[nodemap[filename]]:
 			f.write('Date,' + ','.join(ehc.nodelist[nodemap[filename]]['names']) + "\n")
 		    else:
 			f.write("unknown" + "\n")
