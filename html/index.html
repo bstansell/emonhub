@@ -57,6 +57,10 @@
     font-size: 11pt;
     float: left;
 }
+.graphopt {
+    font-size: 11pt;
+    float: left;
+}
 </style>
 </head>
 <body>
@@ -65,6 +69,7 @@
 <div id="legend-container">
 <select id="graphtypes" onchange="updateit()">
 </select>
+<div id="graphoption" style="display: none;"></div>
 <div id="legend" class="legend"></div><div id="altlegend" class="mlegend" style="display: none"></div></div>
 <script type="text/javascript">
 var dgraph = null;
@@ -100,10 +105,32 @@ function createit(data) {
     var header = data.shift();
 
     data.sort(function(a,b){return a[0]<b[0] ? -1 : a[0]>b[0] ? 1 : 0;});
+
+    var last = [];
+    var initsel = 0;
+    for (var d = data.length - 1; d > 0; d--) {
+	for (var i = 1; i < data[d].length; i++) {
+	    if (last[i] == null && data[d][i] != null) {
+		last[i] = d;
+		initsel = d;
+	    }
+	}
+	var cont = 0;
+	for (var i = 1; i < data[d].length; i++) {
+	    if (last[i] == null) {
+		cont++;
+	    }
+	}
+	if (!cont) {
+	    break;
+	}
+    }
     for (var d = 1; d < data.length - 1; d++) {
 	for (var i = 1; i < data[d].length; i++) {
-	    if (data[d][i] == null) {
-		data[d][i] = data[d-1][i];
+	    if (last[i] != null && d < last[i]) {
+		if (data[d][i] == null) {
+		    data[d][i] = data[d-1][i];
+		}
 	    }
 	}
     }
@@ -146,8 +173,14 @@ function createit(data) {
 		options
 	);
     }
+    dgraph.setSelection(initsel);
 }
 
+function unchanged(v) {
+    return v;
+}
+
+var adjust = unchanged;
 
 function processdata() {
 	var fulldata = [];
@@ -171,7 +204,7 @@ function processdata() {
 		    row[f] = null;
 		}
 		row[0] = new Date(1000 * dataset[dset][l][0]);
-		row[s] = dataset[dset][l][pull];
+		row[s] = adjust(dataset[dset][l][pull]);
 		fulldata.push(row);
 	    }
 	}
@@ -179,10 +212,36 @@ function processdata() {
 	createit(fulldata);
 }
 
+function ctof(v) {
+    return v * 9.0 / 5.0 + 32.0;
+}
+
+function toggleTemp() {
+    var b = document.getElementById("graphoption").firstElementChild;
+
+    if (adjust == unchanged) {
+	adjust = ctof;
+	b.innerHTML = "F";
+    } else {
+	adjust = unchanged;
+	b.innerHTML = "C";
+    }
+
+    processdata();
+}
+
 function updateit() {
     var e = document.getElementById("graphtypes");
     graphtype = e.options[e.selectedIndex].value;
 
+    var o = document.getElementById("graphoption");
+    if (graphtype == "Temperature") {
+	o.innerHTML = ' <button onclick="toggleTemp();" class="graphopt">C</button>';
+	o.style.display = "inline";
+    } else {
+	o.style.display = "none";
+    }
+    
     processdata();
 }
 
