@@ -53,6 +53,10 @@
     padding: 5px;
     display: inline-block;
 }
+#zeroit {
+//    font-size: 11pt;
+    float: right;
+}
 #graphtypes {
     font-size: 11pt;
     float: left;
@@ -67,10 +71,12 @@
 <div id="label"></div>
 <p><div id="graphdiv" style="width:100%; height:400px;"></div></p>
 <div id="legend-container">
-<select id="graphtypes" onchange="updateit()">
-</select>
-<div id="graphoption" style="display: none;"></div>
-<div id="legend" class="legend"></div><div id="altlegend" class="mlegend" style="display: none"></div></div>
+    <select id="graphtypes" onchange="updateit()">
+    </select>
+    <div id="graphoption" style="display: none;"></div>
+    <div id="legend" class="legend"></div><div id="altlegend" class="mlegend" style="display: none"></div>
+    <div id="zeroit"><button onclick="toggleZero();">Force Zero</button></div>
+</div>
 <script type="text/javascript">
 var dgraph = null;
 var needed = 0;
@@ -152,7 +158,8 @@ function createit(data) {
 	    labelsSeparateLines: true,
 	    labelsUTC: true,
 	    legend: "onmouseover",
-	    labels: header
+	    labels: header,
+//includeZero: true
 	};
 	if (ismobile()) {
 	    options["legend"] = "always";
@@ -181,6 +188,7 @@ function unchanged(v) {
 }
 
 var adjust = unchanged;
+var showzero = false;
 
 function processdata() {
 	var fulldata = [];
@@ -205,7 +213,9 @@ function processdata() {
 		}
 		row[0] = new Date(1000 * dataset[dset][l][0]);
 		row[s] = adjust(dataset[dset][l][pull]);
-		fulldata.push(row);
+		if (!isNaN(row[0].getTime())) {
+		    fulldata.push(row);
+		}
 	    }
 	}
 
@@ -214,6 +224,23 @@ function processdata() {
 
 function ctof(v) {
     return v * 9.0 / 5.0 + 32.0;
+}
+
+function toggleZero() {
+    var b = document.getElementById("zeroit").firstElementChild;
+
+    showzero = !showzero;
+    if (showzero == true) {
+	b.innerHTML = "Don't Force Zero";
+    } else {
+	b.innerHTML = "Force Zero";
+    }
+
+    dgraph.updateOptions(
+	{
+	    includeZero: showzero
+	}
+    );
 }
 
 function toggleTemp() {
@@ -362,10 +389,10 @@ function makegraph(sources) {
     var days = parseInt(days[0]);
     days = isNaN(days) ? 2 : days > 9 ? 9 : days < 1 ? 1 : days;
     for (var d = 2; d <= days; d++) {
-	now.setDate(now.getDate() - 1);
-	year = now.getFullYear();
-	month = now.getMonth() + 1;
-	day = now.getDate();
+	now.setUTCDate(now.getUTCDate() - 1);
+	year = now.getUTCFullYear();
+	month = now.getUTCMonth() + 1;
+	day = now.getUTCDate();
 	ts = year + "-" + zeropad(month, 2) + "-" + zeropad(day, 2); // yesterday
 
 	for (var idx = 0; idx < sources.length; idx ++) {
@@ -403,4 +430,5 @@ getsensors(pathArray.join("/"));
 
 </script>
 </body>
+
 </html>
